@@ -25,27 +25,44 @@ define customservice::config (
 
   service { "${name}" :
     ensure     => running,
-    hasstatus  => true,
-    hasrestart => true,
+    hasstatus  => false,
+    hasrestart => false,
     enable     => true,
     require    => [
-                  File["/etc/init.d/${name}"],
+                  File["init script for ${name}"],
                   User["${user}"],
-                 ]
+                   ],
   }
 
-  file { "/etc/init.d/${name}" :
-    ensure  => present,
-    content => template('customservice/service.erb'),
-    mode    => 'a+x',
-    owner   => 'root',
-    group   => 'root',
-    require => [
-                File["${log_dir}"],
-                File["${lib_dir}"],
-                ],
-  }
+  if $initsystem == 'systemd' {  
+    file { "/etc/systemd/system/${name}.service" :
+      ensure  => present,
+      content => template('customservice/systemd.erb'),
+      mode    => 'a+x',
+      owner   => 'root',
+      group   => 'root',
+      require => [
+                  File["${log_dir}"],
+                  File["${lib_dir}"],
+                  ],
+      alias   => "init script for ${name}"
+    }
+  } else {
+    file { "/etc/init.d/${name}" :
+      ensure  => present,
+      content => template('customservice/init.erb'),
+      mode    => 'a+x',
+      owner   => 'root',
+      group   => 'root',
+      require => [
+                  File["${log_dir}"],
+                  File["${lib_dir}"],
+                  ],
+      alias   => "init script for ${name}"
+    }
 
+  }
+  
   file { ["${log_dir}","${lib_dir}"]:
     ensure => 'directory',
     owner  => 'root',
